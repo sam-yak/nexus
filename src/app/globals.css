@@ -1,0 +1,246 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --font-display: 'Instrument Serif', serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Dark theme — editorial / ink on obsidian */
+  --surface-0: #0a0a0b;
+  --surface-1: #111113;
+  --surface-2: #1a1a1f;
+  --surface-3: #242429;
+
+  --accent: #c8a2ff;
+  --accent-muted: rgba(200, 162, 255, 0.15);
+  --accent-bright: #dfc4ff;
+
+  --text-primary: #ededef;
+  --text-secondary: #9494a0;
+  --text-tertiary: #5c5c6a;
+
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.12);
+
+  --contradiction: #ff6b6b;
+  --confidence-high: #4ade80;
+  --confidence-mid: #fbbf24;
+  --confidence-low: #f87171;
+
+  --graph-bg: #0d0d10;
+  --graph-node-person: #60a5fa;
+  --graph-node-org: #f59e0b;
+  --graph-node-concept: #c8a2ff;
+  --graph-node-event: #34d399;
+  --graph-node-location: #fb7185;
+  --graph-node-tech: #38bdf8;
+  --graph-node-claim: #fbbf24;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background: var(--surface-0);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* ─── Selection ──────────────────────────────────────────────────────────── */
+
+::selection {
+  background: var(--accent-muted);
+  color: var(--accent-bright);
+}
+
+/* ─── Graph Styles ───────────────────────────────────────────────────────── */
+
+.graph-container {
+  background: var(--graph-bg);
+  background-image:
+    radial-gradient(circle at 25% 25%, rgba(200, 162, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(96, 165, 250, 0.03) 0%, transparent 50%);
+}
+
+.graph-node-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  fill: var(--text-primary);
+  pointer-events: none;
+  text-anchor: middle;
+}
+
+.graph-edge-label {
+  font-family: var(--font-body);
+  font-size: 9px;
+  fill: var(--text-tertiary);
+  pointer-events: none;
+  text-anchor: middle;
+}
+
+/* ─── Markdown Styles ────────────────────────────────────────────────────── */
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  color: var(--text-primary);
+}
+
+.markdown-content h1 { font-size: 1.5rem; }
+.markdown-content h2 { font-size: 1.25rem; }
+.markdown-content h3 { font-size: 1.1rem; }
+
+.markdown-content p {
+  margin: 0.6em 0;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.markdown-content strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.markdown-content a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.markdown-content a:hover {
+  border-bottom-color: var(--accent);
+}
+
+.markdown-content ul, .markdown-content ol {
+  padding-left: 1.2em;
+  margin: 0.5em 0;
+}
+
+.markdown-content li {
+  margin: 0.3em 0;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.markdown-content code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--surface-3);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+
+.markdown-content blockquote {
+  border-left: 2px solid var(--accent-muted);
+  padding-left: 1em;
+  margin-left: 0;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* ─── Citation Tooltip ───────────────────────────────────────────────────── */
+
+.citation-ref {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  background: var(--accent-muted);
+  color: var(--accent);
+  border-radius: 4px;
+  cursor: pointer;
+  vertical-align: super;
+  margin: 0 1px;
+  transition: all 0.15s;
+  text-decoration: none;
+}
+
+.citation-ref:hover {
+  background: var(--accent);
+  color: var(--surface-0);
+  transform: scale(1.1);
+}
+
+/* ─── Loading dots ───────────────────────────────────────────────────────── */
+
+@keyframes loadingDot {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+.loading-dot {
+  animation: loadingDot 1.4s ease-in-out infinite;
+}
+
+.loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* ─── Research step line ─────────────────────────────────────────────────── */
+
+@keyframes stepPulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.step-active {
+  animation: stepPulse 1.5s ease-in-out infinite;
+}
+
+/* ─── Noise texture overlay ──────────────────────────────────────────────── */
+
+.noise-overlay::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
