@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
-  const { query, conversationHistory, existingGraph } = await req.json();
+  const { query, conversationHistory, existingGraph, depth } = await req.json();
 
   const encoder = new TextEncoder();
 
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       };
 
       try {
-        const agent = new ResearchAgent(emit, conversationHistory || []);
+        const agent = new ResearchAgent(emit, conversationHistory || [], depth || "standard");
         await agent.research(query, existingGraph);
       } catch (error) {
         emit({

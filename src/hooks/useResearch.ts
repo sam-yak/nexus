@@ -8,6 +8,8 @@ import {
   Contradiction,
   ResearchStep,
   SubQuery,
+  ResearchDepth,
+  FollowUpQuestion,
 } from "@/types";
 
 interface UseResearchReturn {
@@ -18,6 +20,9 @@ interface UseResearchReturn {
   isResearching: boolean;
   currentSteps: ResearchStep[];
   activeSubQueries: SubQuery[];
+  followUpQuestions: FollowUpQuestion[];
+  depth: ResearchDepth;
+  setDepth: (depth: ResearchDepth) => void;
   sendQuery: (query: string) => Promise<void>;
   clearConversation: () => void;
 }
@@ -30,13 +35,14 @@ export function useResearch(): UseResearchReturn {
   const [isResearching, setIsResearching] = useState(false);
   const [currentSteps, setCurrentSteps] = useState<ResearchStep[]>([]);
   const [activeSubQueries, setActiveSubQueries] = useState<SubQuery[]>([]);
+  const [followUpQuestions, setFollowUpQuestions] = useState<FollowUpQuestion[]>([]);
+  const [depth, setDepth] = useState<ResearchDepth>("standard");
   const abortRef = useRef<AbortController | null>(null);
 
   const sendQuery = useCallback(
     async (query: string) => {
       if (isResearching) return;
 
-      // Add user message
       const userMsg: Message = {
         id: `msg-${Date.now()}`,
         role: "user",
@@ -53,6 +59,7 @@ export function useResearch(): UseResearchReturn {
         citations: [],
         researchSteps: [],
         subQueries: [],
+        followUpQuestions: [],
         timestamp: Date.now(),
         isStreaming: true,
       };
@@ -61,8 +68,8 @@ export function useResearch(): UseResearchReturn {
       setIsResearching(true);
       setCurrentSteps([]);
       setActiveSubQueries([]);
+      setFollowUpQuestions([]);
 
-      // Build conversation history for context
       const conversationHistory = messages.map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
@@ -78,6 +85,7 @@ export function useResearch(): UseResearchReturn {
             query,
             conversationHistory,
             existingGraph: graph.nodes.length > 0 ? graph : undefined,
+            depth,
           }),
           signal: abortRef.current.signal,
         });
@@ -113,9 +121,7 @@ export function useResearch(): UseResearchReturn {
 
                 case "subquery":
                   setActiveSubQueries((prev) => {
-                    const existing = prev.findIndex(
-                      (sq) => sq.query === event.data.query
-                    );
+                    const existing = prev.findIndex((sq) => sq.query === event.data.query);
                     if (existing >= 0) {
                       const updated = [...prev];
                       updated[existing] = event.data;
@@ -138,13 +144,15 @@ export function useResearch(): UseResearchReturn {
                   setContradictions((prev) => [...prev, event.data]);
                   break;
 
+                case "follow_up_questions":
+                  setFollowUpQuestions(event.data);
+                  break;
+
                 case "synthesis_chunk":
                   accumulatedText += event.data.text;
                   setMessages((prev) =>
                     prev.map((m) =>
-                      m.id === assistantMsgId
-                        ? { ...m, content: accumulatedText }
-                        : m
+                      m.id === assistantMsgId ? { ...m, content: accumulatedText } : m
                     )
                   );
                   break;
@@ -159,23 +167,21 @@ export function useResearch(): UseResearchReturn {
                             sources: event.data.sources || latestSources,
                             graph: event.data.graph,
                             contradictions: event.data.contradictions,
+                            followUpQuestions: event.data.followUpQuestions || [],
                             isStreaming: false,
                           }
                         : m
                     )
                   );
                   if (event.data.graph) setGraph(event.data.graph);
+                  if (event.data.followUpQuestions) setFollowUpQuestions(event.data.followUpQuestions);
                   break;
 
                 case "error":
                   setMessages((prev) =>
                     prev.map((m) =>
                       m.id === assistantMsgId
-                        ? {
-                            ...m,
-                            content: `Research failed: ${event.data.message}`,
-                            isStreaming: false,
-                          }
+                        ? { ...m, content: `Research failed: ${event.data.message}`, isStreaming: false }
                         : m
                     )
                   );
@@ -191,26 +197,19 @@ export function useResearch(): UseResearchReturn {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMsgId
-                ? {
-                    ...m,
-                    content: `Error: ${(error as Error).message}`,
-                    isStreaming: false,
-                  }
+                ? { ...m, content: `Error: ${(error as Error).message}`, isStreaming: false }
                 : m
             )
           );
         }
       } finally {
         setIsResearching(false);
-        // Mark streaming as done
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMsgId ? { ...m, isStreaming: false } : m
-          )
+          prev.map((m) => (m.id === assistantMsgId ? { ...m, isStreaming: false } : m))
         );
       }
     },
-    [isResearching, messages, graph]
+    [isResearching, messages, graph, depth]
   );
 
   const clearConversation = useCallback(() => {
@@ -220,6 +219,7 @@ export function useResearch(): UseResearchReturn {
     setContradictions([]);
     setCurrentSteps([]);
     setActiveSubQueries([]);
+    setFollowUpQuestions([]);
   }, []);
 
   return {
@@ -230,6 +230,9 @@ export function useResearch(): UseResearchReturn {
     isResearching,
     currentSteps,
     activeSubQueries,
+    followUpQuestions,
+    depth,
+    setDepth,
     sendQuery,
     clearConversation,
   };

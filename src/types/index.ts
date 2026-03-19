@@ -1,10 +1,20 @@
 // ─── Core Search & Research Types ────────────────────────────────────────────
 
+export type ResearchDepth = "quick" | "standard" | "deep";
+
 export interface SearchResult {
   title: string;
   url: string;
   content: string;
   score: number;
+}
+
+export interface SourceCredibility {
+  domain: string;
+  authority: number;
+  crossReferenceCount: number;
+  recency: number;
+  overall: number;
 }
 
 export interface Source {
@@ -13,6 +23,7 @@ export interface Source {
   url: string;
   snippet: string;
   relevance: number;
+  credibility?: SourceCredibility;
 }
 
 export interface SubQuery {
@@ -23,7 +34,7 @@ export interface SubQuery {
 }
 
 export interface ResearchStep {
-  type: "decompose" | "search" | "analyze" | "follow-up" | "synthesize" | "extract";
+  type: "decompose" | "search" | "analyze" | "follow-up" | "synthesize" | "extract" | "credibility";
   description: string;
   timestamp: number;
   data?: unknown;
@@ -74,6 +85,11 @@ export interface Citation {
   url: string;
 }
 
+export interface FollowUpQuestion {
+  text: string;
+  reasoning: string;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -84,6 +100,7 @@ export interface Message {
   contradictions?: Contradiction[];
   researchSteps?: ResearchStep[];
   subQueries?: SubQuery[];
+  followUpQuestions?: FollowUpQuestion[];
   timestamp: number;
   isStreaming?: boolean;
 }
@@ -103,6 +120,7 @@ export interface ChatRequest {
   query: string;
   conversationHistory: { role: "user" | "assistant"; content: string }[];
   existingGraph?: KnowledgeGraph;
+  depth?: ResearchDepth;
 }
 
 export interface ResearchEvent {
@@ -114,34 +132,11 @@ export interface ResearchEvent {
     | "graph_update"
     | "contradiction"
     | "synthesis_chunk"
+    | "follow_up_questions"
+    | "sources_update"
     | "done"
     | "error";
   data: unknown;
-}
-
-export interface ResearchStepEvent {
-  type: "step";
-  data: ResearchStep;
-}
-
-export interface SubQueryEvent {
-  type: "subquery";
-  data: SubQuery;
-}
-
-export interface GraphUpdateEvent {
-  type: "graph_update";
-  data: KnowledgeGraph;
-}
-
-export interface ContradictionEvent {
-  type: "contradiction";
-  data: Contradiction;
-}
-
-export interface SynthesisChunkEvent {
-  type: "synthesis_chunk";
-  data: { text: string; sources: Source[] };
 }
 
 export interface DoneEvent {
@@ -151,5 +146,46 @@ export interface DoneEvent {
     sources: Source[];
     graph: KnowledgeGraph;
     contradictions: Contradiction[];
+    followUpQuestions: FollowUpQuestion[];
   };
 }
+
+// ─── Depth Configuration ────────────────────────────────────────────────────
+
+export const DEPTH_CONFIG: Record<ResearchDepth, {
+  maxSubQueries: number;
+  maxFollowUps: number;
+  searchResultsPerQuery: number;
+  enableContradictions: boolean;
+  enableGapAnalysis: boolean;
+  label: string;
+  description: string;
+}> = {
+  quick: {
+    maxSubQueries: 1,
+    maxFollowUps: 0,
+    searchResultsPerQuery: 4,
+    enableContradictions: false,
+    enableGapAnalysis: false,
+    label: "Quick",
+    description: "Single search, fast answer",
+  },
+  standard: {
+    maxSubQueries: 3,
+    maxFollowUps: 1,
+    searchResultsPerQuery: 5,
+    enableContradictions: true,
+    enableGapAnalysis: true,
+    label: "Standard",
+    description: "Multi-angle research with verification",
+  },
+  deep: {
+    maxSubQueries: 5,
+    maxFollowUps: 3,
+    searchResultsPerQuery: 6,
+    enableContradictions: true,
+    enableGapAnalysis: true,
+    label: "Deep",
+    description: "Exhaustive research with full analysis",
+  },
+};

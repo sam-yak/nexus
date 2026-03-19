@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useResearch } from "@/hooks/useResearch";
+import { GraphNode } from "@/types";
 import KnowledgeGraph from "@/components/KnowledgeGraph";
 import ResearchProgress from "@/components/ResearchProgress";
 import ChatMessage from "@/components/ChatMessage";
 import SourcePanel from "@/components/SourcePanel";
 import ContradictionBanner from "@/components/ContradictionBanner";
 import ChatInput from "@/components/ChatInput";
+import DepthControl from "@/components/DepthControl";
+import FollowUpQuestions from "@/components/FollowUpQuestions";
 
 const EXAMPLE_QUERIES = [
   "Compare the approaches of OpenAI, Anthropic, and Google to AI safety",
@@ -26,6 +29,9 @@ export default function Home() {
     isResearching,
     currentSteps,
     activeSubQueries,
+    followUpQuestions,
+    depth,
+    setDepth,
     sendQuery,
     clearConversation,
   } = useResearch();
@@ -36,9 +42,8 @@ export default function Home() {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, currentSteps]);
+  }, [messages, currentSteps, followUpQuestions]);
 
-  // Switch to sources panel when sources arrive and graph is empty
   useEffect(() => {
     if (sources.length > 0 && graph.nodes.length === 0) {
       setRightPanel("sources");
@@ -46,6 +51,33 @@ export default function Home() {
       setRightPanel("graph");
     }
   }, [sources, graph]);
+
+  // Graph node click → explore deeper
+  const handleNodeClick = useCallback(
+    (node: GraphNode) => {
+      if (isResearching) return;
+      const query = `Tell me more about ${node.label} and its significance in this context`;
+      sendQuery(query);
+    },
+    [isResearching, sendQuery]
+  );
+
+  // Follow-up question click
+  const handleFollowUp = useCallback(
+    (question: string) => {
+      if (isResearching) return;
+      sendQuery(question);
+    },
+    [isResearching, sendQuery]
+  );
+
+  // Check if follow-ups should show (after last message finishes, not during streaming)
+  const lastMessage = messages[messages.length - 1];
+  const showFollowUps =
+    followUpQuestions.length > 0 &&
+    !isResearching &&
+    lastMessage?.role === "assistant" &&
+    !lastMessage?.isStreaming;
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -76,7 +108,8 @@ export default function Home() {
               multi-hop research
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <DepthControl depth={depth} onChange={setDepth} disabled={isResearching} />
             {hasMessages && (
               <motion.button
                 initial={{ opacity: 0 }}
@@ -97,7 +130,6 @@ export default function Home() {
         <div className={`flex flex-col transition-all duration-300 ${hasMessages ? "w-[60%]" : "w-full"}`}>
           <div className="flex-1 overflow-y-auto">
             {!hasMessages ? (
-              // ─── Empty State ──────────────────────────────────────────
               <div className="h-full flex items-center justify-center px-6">
                 <div className="max-w-2xl w-full">
                   <motion.div
@@ -148,7 +180,6 @@ export default function Home() {
                     ))}
                   </motion.div>
 
-                  {/* Feature badges */}
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -158,8 +189,9 @@ export default function Home() {
                     {[
                       { icon: "🔄", label: "Multi-hop" },
                       { icon: "🕸️", label: "Knowledge graph" },
-                      { icon: "⚠️", label: "Contradiction detection" },
-                      { icon: "📊", label: "Confidence scoring" },
+                      { icon: "⚠️", label: "Contradictions" },
+                      { icon: "🛡️", label: "Source credibility" },
+                      { icon: "🧭", label: "Follow-up suggestions" },
                     ].map((f) => (
                       <div
                         key={f.label}
@@ -173,7 +205,6 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              // ─── Chat Messages ────────────────────────────────────────
               <div className="px-6 py-6 max-w-3xl mx-auto w-full">
                 {messages.map((msg, idx) => (
                   <div key={msg.id}>
@@ -186,7 +217,6 @@ export default function Home() {
                         />
                       )}
                     <ChatMessage message={msg} sources={sources} />
-                    {/* Show research progress below the streaming assistant message */}
                     {msg.role === "assistant" &&
                       msg.isStreaming &&
                       !msg.content &&
@@ -200,12 +230,18 @@ export default function Home() {
                   </div>
                 ))}
 
+                {/* Follow-up questions */}
+                <FollowUpQuestions
+                  questions={followUpQuestions}
+                  onSelect={handleFollowUp}
+                  isVisible={showFollowUps}
+                />
+
                 <div ref={chatEndRef} />
               </div>
             )}
           </div>
 
-          {/* Input (when messages exist) */}
           {hasMessages && (
             <div className="shrink-0 border-t border-[var(--border)] bg-[var(--surface-0)] px-6 py-4">
               <div className="max-w-3xl mx-auto">
@@ -219,7 +255,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* Right Panel: Graph + Sources */}
+        {/* Right Panel */}
         <AnimatePresence>
           {hasMessages && (
             <motion.div
@@ -229,7 +265,6 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="border-l border-[var(--border)] bg-[var(--surface-0)] flex flex-col overflow-hidden"
             >
-              {/* Panel tabs */}
               <div className="shrink-0 flex border-b border-[var(--border)]">
                 <button
                   onClick={() => setRightPanel("graph")}
@@ -241,9 +276,7 @@ export default function Home() {
                 >
                   Knowledge Graph
                   {graph.nodes.length > 0 && (
-                    <span className="ml-1.5 text-[10px] opacity-60">
-                      ({graph.nodes.length})
-                    </span>
+                    <span className="ml-1.5 text-[10px] opacity-60">({graph.nodes.length})</span>
                   )}
                 </button>
                 <button
@@ -256,20 +289,18 @@ export default function Home() {
                 >
                   Sources
                   {sources.length > 0 && (
-                    <span className="ml-1.5 text-[10px] opacity-60">
-                      ({sources.length})
-                    </span>
+                    <span className="ml-1.5 text-[10px] opacity-60">({sources.length})</span>
                   )}
                 </button>
               </div>
 
-              {/* Panel content */}
               <div className="flex-1 overflow-hidden">
                 {rightPanel === "graph" ? (
                   <div className="h-full p-3">
                     <KnowledgeGraph
                       graph={graph}
                       contradictions={contradictions}
+                      onNodeClick={handleNodeClick}
                     />
                   </div>
                 ) : (
@@ -278,6 +309,15 @@ export default function Home() {
                   </div>
                 )}
               </div>
+
+              {/* Graph click hint */}
+              {rightPanel === "graph" && graph.nodes.length > 0 && (
+                <div className="shrink-0 border-t border-[var(--border)] px-3 py-2 text-center">
+                  <span className="text-[10px] text-[var(--text-tertiary)]">
+                    Click any node to explore deeper
+                  </span>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
