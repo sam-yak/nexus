@@ -4,43 +4,83 @@ import { Message, Source } from "@/types";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
-import React from "react";
+import React, { ReactNode } from "react";
 
 interface Props {
   message: Message;
   sources: Source[];
 }
 
-function CitationRenderer({ text, sources }: { text: string; sources: Source[] }) {
-  // Replace [N] citation patterns with interactive elements
+// Transforms citation patterns [N] in a string into clickable links
+function transformCitations(text: string, sources: Source[]): ReactNode[] {
   const parts = text.split(/(\[\d+\])/g);
+  return parts.map((part, i) => {
+    const match = part.match(/^\[(\d+)\]$/);
+    if (match) {
+      const num = parseInt(match[1]);
+      const source = sources[num - 1];
+      if (source) {
+        return (
+          
+            key={`cite-${i}`}
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="citation-ref"
+            title={source.title}
+          >
+            {num}
+          </a>
+        );
+      }
+    }
+    return <React.Fragment key={`text-${i}`}>{part}</React.Fragment>;
+  });
+}
 
-  return (
-    <>
-      {parts.map((part, i) => {
-        const match = part.match(/^\[(\d+)\]$/);
-        if (match) {
-          const num = parseInt(match[1]);
-          const source = sources[num - 1];
-          if (source) {
-            return (
-              <a
-                key={i}
-                href={source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="citation-ref"
-                title={source.title}
-              >
-                {num}
-              </a>
-            );
-          }
-        }
-        return <React.Fragment key={i}>{part}</React.Fragment>;
-      })}
-    </>
-  );
+// Recursively walks React children, keeping elements intact
+// and only transforming citation patterns inside strings
+function injectCitations(children: ReactNode, sources: Source[]): ReactNode {
+  return React.Children.map(children, (child) => {
+    // String node: transform citations
+    if (typeof child === "string") {
+      if (/\[\d+\]/.test(child)) {
+        return <>{transformCitations(child, sources)}</>;
+      }
+      return child;
+    }
+
+    // React element: recurse into its children
+    if (React.isValidElement(child)) {
+      const element = child as React.ReactElement<{ children?: ReactNode }>;
+      if (element.props.children) {
+        return React.cloneElement(element, {
+          ...element.props,
+          children: injectCitations(element.props.children, sources),
+        });
+      }
+      return child;
+    }
+
+    return child;
+  });
+}
+
+// Check if any string content in children contains [N] patterns
+function hasCitations(children: ReactNode): boolean {
+  let found = false;
+  React.Children.forEach(children, (child) => {
+    if (typeof child === "string" && /\[\d+\]/.test(child)) {
+      found = true;
+    }
+    if (React.isValidElement(child)) {
+      const element = child as React.ReactElement<{ children?: ReactNode }>;
+      if (element.props.children && hasCitations(element.props.children)) {
+        found = true;
+      }
+    }
+  });
+  return found;
 }
 
 export default function ChatMessage({ message, sources }: Props) {
@@ -71,37 +111,34 @@ export default function ChatMessage({ message, sources }: Props) {
       className="mb-6"
     >
       <div className="max-w-full">
-        {/* Answer content */}
         {message.content && (
           <div className="markdown-content text-[15px] leading-relaxed">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
                 p: ({ children }) => {
-                  const text = React.Children.toArray(children)
-                    .map((child) => (typeof child === "string" ? child : ""))
-                    .join("");
-                  if (text.includes("[") && /\[\d+\]/.test(text)) {
-                    return (
-                      <p>
-                        <CitationRenderer text={text} sources={allSources} />
-                      </p>
-                    );
+                  if (hasCitations(children)) {
+                    return <p>{injectCitations(children, allSources)}</p>;
                   }
                   return <p>{children}</p>;
                 },
                 li: ({ children }) => {
-                  const text = React.Children.toArray(children)
-                    .map((child) => (typeof child === "string" ? child : ""))
-                    .join("");
-                  if (text.includes("[") && /\[\d+\]/.test(text)) {
-                    return (
-                      <li>
-                        <CitationRenderer text={text} sources={allSources} />
-                      </li>
-                    );
+                  if (hasCitations(children)) {
+                    return <li>{injectCitations(children, allSources)}</li>;
                   }
                   return <li>{children}</li>;
+                },
+                h2: ({ children }) => {
+                  if (hasCitations(children)) {
+                    return <h2>{injectCitations(children, allSources)}</h2>;
+                  }
+                  return <h2>{children}</h2>;
+                },
+                h3: ({ children }) => {
+                  if (hasCitations(children)) {
+                    return <h3>{injectCitations(children, allSources)}</h3>;
+                  }
+                  return <h3>{children}</h3>;
                 },
               }}
             >
@@ -110,7 +147,6 @@ export default function ChatMessage({ message, sources }: Props) {
           </div>
         )}
 
-        {/* Streaming cursor */}
         {message.isStreaming && (
           <span className="inline-flex gap-1 ml-1 align-middle">
             <span className="loading-dot w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
