@@ -4,12 +4,13 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=JetBrains+Mono:wght@400;500&display=swap');
 
+/* ─── Dark Theme (default) ───────────────────────────────────────────────── */
+
 :root {
   --font-display: 'Instrument Serif', serif;
   --font-body: 'DM Sans', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  /* Dark theme — editorial / ink on obsidian */
   --surface-0: #0a0a0b;
   --surface-1: #111113;
   --surface-2: #1a1a1f;
@@ -32,14 +33,40 @@
   --confidence-low: #f87171;
 
   --graph-bg: #0d0d10;
-  --graph-node-person: #60a5fa;
-  --graph-node-org: #f59e0b;
-  --graph-node-concept: #c8a2ff;
-  --graph-node-event: #34d399;
-  --graph-node-location: #fb7185;
-  --graph-node-tech: #38bdf8;
-  --graph-node-claim: #fbbf24;
+  --shadow-color: rgba(0, 0, 0, 0.25);
+  --input-shadow: rgba(0, 0, 0, 0.2);
 }
+
+/* ─── Light Theme ────────────────────────────────────────────────────────── */
+
+[data-theme="light"] {
+  --surface-0: #fafaf9;
+  --surface-1: #ffffff;
+  --surface-2: #f3f3f1;
+  --surface-3: #eaeae7;
+
+  --accent: #7c3aed;
+  --accent-muted: rgba(124, 58, 237, 0.1);
+  --accent-bright: #6d28d9;
+
+  --text-primary: #1a1a1a;
+  --text-secondary: #525259;
+  --text-tertiary: #8d8d96;
+
+  --border: rgba(0, 0, 0, 0.06);
+  --border-strong: rgba(0, 0, 0, 0.12);
+
+  --contradiction: #dc2626;
+  --confidence-high: #16a34a;
+  --confidence-mid: #ca8a04;
+  --confidence-low: #dc2626;
+
+  --graph-bg: #f7f7f5;
+  --shadow-color: rgba(0, 0, 0, 0.06);
+  --input-shadow: rgba(0, 0, 0, 0.04);
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────── */
 
 * {
   box-sizing: border-box;
@@ -49,6 +76,7 @@ html {
   font-family: var(--font-body);
   color: var(--text-primary);
   background: var(--surface-0);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 body {
@@ -61,22 +89,10 @@ body {
 
 /* ─── Scrollbar ──────────────────────────────────────────────────────────── */
 
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary);
-}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
 
 /* ─── Selection ──────────────────────────────────────────────────────────── */
 
@@ -92,6 +108,12 @@ body {
   background-image:
     radial-gradient(circle at 25% 25%, rgba(200, 162, 255, 0.03) 0%, transparent 50%),
     radial-gradient(circle at 75% 75%, rgba(96, 165, 250, 0.03) 0%, transparent 50%);
+}
+
+[data-theme="light"] .graph-container {
+  background-image:
+    radial-gradient(circle at 25% 25%, rgba(124, 58, 237, 0.04) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(59, 130, 246, 0.04) 0%, transparent 50%);
 }
 
 .graph-node-label {
@@ -176,7 +198,7 @@ body {
   font-style: italic;
 }
 
-/* ─── Citation Tooltip ───────────────────────────────────────────────────── */
+/* ─── Citation ───────────────────────────────────────────────────────────── */
 
 .citation-ref {
   display: inline-flex;
@@ -203,6 +225,29 @@ body {
   transform: scale(1.1);
 }
 
+/* ─── Smooth Streaming (fix jerky rendering) ─────────────────────────────── */
+
+.markdown-content {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+.markdown-content > * {
+  animation: contentFadeIn 0.15s ease-out;
+}
+
+@keyframes contentFadeIn {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+/* Prevent layout shift during streaming */
+.streaming-container {
+  min-height: 2em;
+  will-change: contents;
+  contain: layout style;
+}
+
 /* ─── Loading dots ───────────────────────────────────────────────────────── */
 
 @keyframes loadingDot {
@@ -217,7 +262,7 @@ body {
 .loading-dot:nth-child(2) { animation-delay: 0.2s; }
 .loading-dot:nth-child(3) { animation-delay: 0.4s; }
 
-/* ─── Research step line ─────────────────────────────────────────────────── */
+/* ─── Research step pulse ────────────────────────────────────────────────── */
 
 @keyframes stepPulse {
   0% { opacity: 0.5; }
@@ -227,6 +272,16 @@ body {
 
 .step-active {
   animation: stepPulse 1.5s ease-in-out infinite;
+}
+
+/* ─── Landing page gradient ──────────────────────────────────────────────── */
+
+.hero-gradient {
+  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(200, 162, 255, 0.12) 0%, transparent 60%);
+}
+
+[data-theme="light"] .hero-gradient {
+  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(124, 58, 237, 0.08) 0%, transparent 60%);
 }
 
 /* ─── Noise texture overlay ──────────────────────────────────────────────── */
@@ -243,4 +298,8 @@ body {
   z-index: 9999;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   background-repeat: repeat;
+}
+
+[data-theme="light"] .noise-overlay::before {
+  opacity: 0.02;
 }

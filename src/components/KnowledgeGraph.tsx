@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useState, memo } from "react";
 import * as d3 from "d3";
 import { KnowledgeGraph as KGType, GraphNode, GraphEdge, Contradiction } from "@/types";
 
@@ -30,12 +30,24 @@ interface Props {
   onNodeClick?: (node: GraphNode) => void;
 }
 
-export default function KnowledgeGraph({ graph, contradictions, onNodeClick }: Props) {
+// Fingerprint the graph so we only rebuild when structure changes
+function graphFingerprint(g: KGType): string {
+  return `${g.nodes.length}-${g.edges.length}-${g.nodes.map((n) => n.id).sort().join(",")}`;
+}
+
+function KnowledgeGraphInner({ graph, contradictions, onNodeClick }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const simulationRef = useRef<d3.Simulation<GraphNode, GraphEdge> | null>(null);
+  const onNodeClickRef = useRef(onNodeClick);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
+  const prevFingerprintRef = useRef<string>("");
+
+  // Keep callback ref fresh without triggering effects
+  useEffect(() => {
+    onNodeClickRef.current = onNodeClick;
+  }, [onNodeClick]);
 
   // Track container size
   useEffect(() => {
@@ -55,19 +67,22 @@ export default function KnowledgeGraph({ graph, contradictions, onNodeClick }: P
     return () => observer.disconnect();
   }, []);
 
-  // Build and update graph
+  // Build and update graph — only when structure actually changes
   useEffect(() => {
     if (!svgRef.current || graph.nodes.length === 0) return;
+
+    const fingerprint = graphFingerprint(graph);
+    if (fingerprint === prevFingerprintRef.current) return; // No structural change
+    prevFingerprintRef.current = fingerprint;
 
     const svg = d3.select(svgRef.current);
     const { width, height } = dimensions;
 
     svg.selectAll("*").remove();
 
-    // Defs for gradients and markers
+    // Defs
     const defs = svg.append("defs");
 
-    // Glow filter
     const filter = defs.append("filter").attr("id", "glow");
     filter
       .append("feGaussianBlur")
@@ -77,7 +92,6 @@ export default function KnowledgeGraph({ graph, contradictions, onNodeClick }: P
     feMerge.append("feMergeNode").attr("in", "coloredBlur");
     feMerge.append("feMergeNode").attr("in", "SourceGraphic");
 
-    // Arrow marker
     defs
       .append("marker")
       .attr("id", "arrowhead")
@@ -100,11 +114,9 @@ export default function KnowledgeGraph({ graph, contradictions, onNodeClick }: P
         g.attr("transform", event.transform);
       });
     svg.call(zoom);
-
-    // Center initially
     svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.8));
 
-    // Resolve edges to use node objects for D3
+    // Resolve edges
     const nodeMap = new Map(graph.nodes.map((n) => [n.id, { ...n }]));
     const nodes = Array.from(nodeMap.values());
     const edges: (GraphEdge & { source: any; target: any })[] = graph.edges
@@ -115,7 +127,7 @@ export default function KnowledgeGraph({ graph, contradictions, onNodeClick }: P
         target: e.target,
       }));
 
-    // Mark contradiction edges
+    // Mark contradictions
     for (const c of contradictions) {
       for (const edge of edges) {
         const srcId = typeof edge.source === "string" ? edge.source : edge.source.id;
@@ -193,7 +205,7 @@ export default function KnowledgeGraph({ graph, contradictions, onNodeClick }: P
           })
       );
 
-    // Node outer ring (confidence indicator)
+    // Node outer ring
     node
       .append("circle")
       .attr("r", 22)
@@ -226,14 +238,14 @@ export default function KnowledgeGraph({ graph, contradictions, onNodeClick }: P
     node
       .append("text")
       .attr("class", "graph-node-label")
-      .text((d) => d.label.length > 20 ? d.label.slice(0, 18) + "…" : d.label)
+      .text((d) => (d.label.length > 20 ? d.label.slice(0, 18) + "…" : d.label))
       .attr("dy", 32);
 
-    // Hover + click
+    // Hover + click — use ref for stable callback
     node
       .on("mouseenter", (_, d) => setHoveredNode(d))
       .on("mouseleave", () => setHoveredNode(null))
-      .on("click", (_, d) => onNodeClick?.(d));
+      .on("click", (_, d) => onNodeClickRef.current?.(d));
 
     // Tick
     simulation.on("tick", () => {
@@ -253,7 +265,7 @@ export default function KnowledgeGraph({ graph, contradictions, onNodeClick }: P
     return () => {
       simulation.stop();
     };
-  }, [graph, contradictions, dimensions, onNodeClick]);
+  }, [graph, contradictions, dimensions]);
 
   if (graph.nodes.length === 0) {
     return (
@@ -356,3 +368,7 @@ export default function KnowledgeGraph({ graph, contradictions, onNodeClick }: P
     </div>
   );
 }
+
+// Memoize to prevent re-renders from parent streaming updates
+const KnowledgeGraph = memo(KnowledgeGraphInner);
+export default KnowledgeGraph;

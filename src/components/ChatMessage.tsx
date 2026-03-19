@@ -112,7 +112,7 @@ export default function ChatMessage({ message, sources }: Props) {
     >
       <div className="max-w-full">
         {message.content && (
-          <div className="markdown-content text-[15px] leading-relaxed">
+          <div className={`markdown-content text-[15px] leading-relaxed ${message.isStreaming ? "streaming-container" : ""}`}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
