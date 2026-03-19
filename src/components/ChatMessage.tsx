@@ -21,7 +21,7 @@ function transformCitations(text: string, sources: Source[]): ReactNode[] {
       const source = sources[num - 1];
       if (source) {
         return (
-          
+          <a
             key={`cite-${i}`}
             href={source.url}
             target="_blank"
