@@ -103,7 +103,7 @@ function KnowledgeGraphInner({ graph, contradictions, onNodeClick }: Props) {
       .attr("markerHeight", 6)
       .append("path")
       .attr("d", "M 0,-5 L 10,0 L 0,5")
-      .attr("fill", "rgba(255,255,255,0.15)");
+      .attr("fill", "var(--border-strong)");
 
     // Zoom
     const g = svg.append("g");
@@ -163,7 +163,7 @@ function KnowledgeGraphInner({ graph, contradictions, onNodeClick }: Props) {
       .data(edges)
       .join("line")
       .attr("stroke", (d) =>
-        d.isContradiction ? "var(--contradiction)" : "rgba(255,255,255,0.08)"
+        d.isContradiction ? "var(--contradiction)" : "var(--border-strong)"
       )
       .attr("stroke-width", (d) => (d.isContradiction ? 2 : 1))
       .attr("stroke-dasharray", (d) => (d.isContradiction ? "5,5" : "none"))
